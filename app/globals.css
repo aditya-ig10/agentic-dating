@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-ink: #1b0b2e;
+  --color-ink2: #2a1145;
+  --color-bone: #fdeef4;
+  --color-hot: #ff2e88;
+  --color-gold: #ffc700;
+  --color-aqua: #4de1ff;
+  --color-tang: #ff6b35;
+  --color-lav: #b79cff;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--f-body), "Helvetica Neue", Arial, sans-serif;
+}
+
+.font-display {
+  font-family: var(--f-display), "Arial Black", "Helvetica Neue", sans-serif;
+}
+
+.font-love {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+}
+
+/* Whole-line outline treatment for display headlines */
+.outline-word {
+  color: transparent;
+  -webkit-text-stroke: 2.5px var(--color-bone);
+}
+
+/* Offset sticker shadows — varied per component, never the soft grey default */
+.pop {
+  box-shadow: 7px 7px 0 var(--color-ink);
+}
+.pop-sm {
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+.pop-gold {
+  box-shadow: 7px 7px 0 var(--color-gold);
+}
+.pop-hot {
+  box-shadow: 7px 7px 0 var(--color-hot);
+}
+
+/* Dot-grid lab backdrop */
+.dots-bg {
+  background-image: radial-gradient(rgba(253, 238, 244, 0.13) 1.5px, transparent 1.5px);
+  background-size: 22px 22px;
+}
+
+/* Barcode stub on the ticket form */
+.barcode {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-ink) 0 3px,
+    transparent 3px 6px,
+    var(--color-ink) 6px 7px,
+    transparent 7px 12px
+  );
+}
+
+/* Perforation between ticket body and stub */
+.perf {
+  background-image: linear-gradient(var(--color-ink) 45%, transparent 45%);
+  background-size: 2px 12px;
+  background-repeat: repeat-y;
+}
+
+/* Marquee — the single orchestrated motion moment (home only) */
+@keyframes marquee-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee-slide 26s linear infinite;
+}
+
+::selection {
+  background: var(--color-hot);
+  color: var(--color-bone);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
 }

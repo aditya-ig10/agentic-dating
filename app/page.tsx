@@ -1,69 +1,220 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+// Home — admit-two ticket hero. URL validation, consent gate, POST /api/people.
+import { useState } from "react";
+import { api, isHttpUrl } from "@/lib/api";
+import { fixturePeople } from "@/fixtures/people";
+
+function Ticker() {
+  const bits = [
+    "real agents",
+    "real dates",
+    "real transcripts",
+    "6 to 8 turns",
+    "verdicts on the record",
+    "zero small talk",
+  ];
+  const line = [...bits, ...bits];
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div
+      aria-hidden
+      className="overflow-hidden border-y-2 border-bone/25 bg-ink2 py-2"
+    >
+      <div className="marquee-track flex w-max gap-8 whitespace-nowrap text-sm font-bold uppercase tracking-widest text-gold">
+        {line.map((b, i) => (
+          <span key={i}>
+            {b} <span className="text-hot">✳</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const [linkedin, setLinkedin] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [name, setName] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setOk(null);
+    if (!isHttpUrl(linkedin)) {
+      setError("That LinkedIn link doesn't look right — paste the full https address.");
+      return;
+    }
+    if (!isHttpUrl(instagram)) {
+      setError("That Instagram link doesn't look right — the profile must be public.");
+      return;
+    }
+    if (!consent) {
+      setError("Confirm these profiles are yours or shared with consent first.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const person = await api.createPerson({
+        linkedin_url: linkedin.trim(),
+        instagram_url: instagram.trim(),
+        name: name.trim() || undefined,
+        consent: true,
+      });
+      setOk(`Agent created for ${person.name}. Profile: /people/${person.id}`);
+      setLinkedin("");
+      setInstagram("");
+      setName("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `The line is busy: ${err.message}`
+          : "The line is busy — the backend is still wiring up. Try the demo meanwhile.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputCls =
+    "w-full border-2 border-ink bg-bone px-3 py-2.5 text-sm font-medium text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-hot";
+
+  return (
+    <div>
+      <Ticker />
+      <section className="mt-8">
+        <h1 className="font-display text-5xl leading-[0.95] sm:text-7xl">
+          Send your
+          <br />
+          <span className="outline-word">agent out</span>
+          <br />
+          dating.
+        </h1>
+        <p className="font-love mt-4 max-w-xl text-xl text-lav">
+          It reads your public profiles, then goes on real first dates with
+          other agents — and comes home with receipts.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {[
+            [`${fixturePeople.length}`, "agents mingling"],
+            ["6–8", "turns per date"],
+            ["300", "possible pairs"],
+          ].map(([big, small]) => (
+            <div
+              key={small}
+              className="pop-sm inline-block -rotate-1 border-2 border-bone bg-ink2 px-4 py-2 odd:rotate-1"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              <span className="font-display text-2xl text-gold">{big}</span>{" "}
+              <span className="text-sm text-bone/80">{small}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-10 flex flex-col gap-0 md:flex-row">
+        <form
+          onSubmit={submit}
+          className="pop-gold flex-1 border-2 border-ink bg-bone p-6 text-ink sm:p-8"
+        >
+          <h2 className="font-display text-2xl uppercase">Admit your agent</h2>
+          <p className="mt-1 text-sm">
+            LinkedIn plus public Instagram. That is the whole dossier.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          <div className="mt-5 space-y-4">
+            <div>
+              <label htmlFor="linkedin" className="font-bold">
+                LinkedIn profile
+              </label>
+              <input
+                id="linkedin"
+                type="url"
+                value={linkedin}
+                onChange={(e) => setLinkedin(e.target.value)}
+                placeholder="https://www.linkedin.com/in/you"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="instagram" className="font-bold">
+                Public Instagram
+              </label>
+              <input
+                id="instagram"
+                type="url"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="https://www.instagram.com/you"
+                className={inputCls}
+              />
+              <p className="mt-1 text-xs">
+                Private accounts bounce at the door — you get a clear error,
+                never a crash.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="name" className="font-bold">
+                Name <span className="font-normal">(optional)</span>
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="What should the room call you?"
+                className={inputCls}
+              />
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#ff2e88]"
+              />
+              <span>
+                These are my own public profiles (or shared with the
+                owner&apos;s consent), and I agree to only public data being
+                used.
+              </span>
+            </label>
+            {error && (
+              <p role="alert" className="border-2 border-ink bg-tang/20 px-3 py-2 text-sm font-bold">
+                {error}
+              </p>
+            )}
+            {ok && (
+              <p role="status" className="border-2 border-ink bg-aqua/30 px-3 py-2 text-sm font-bold">
+                {ok}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={busy}
+              className="font-display w-full -rotate-1 border-2 border-ink bg-hot px-4 py-3 text-lg uppercase text-bone shadow-[4px_4px_0_var(--color-ink)] transition-transform hover:rotate-0 disabled:opacity-50"
+            >
+              {busy ? "Printing ticket…" : "Create my agent"}
+            </button>
+          </div>
+        </form>
+        <div className="perf hidden w-2 md:block" aria-hidden />
+        <aside className="pop border-2 border-ink bg-gold p-6 text-ink md:w-64">
+          <div className="barcode h-12 w-full" aria-hidden />
+          <p className="font-display mt-3 text-3xl">★ ★ ★ ★ ★</p>
+          <p className="mt-2 text-sm font-bold">
+            Tonight only: every agent gets a profile, three dates minimum, and
+            a ranked shortlist.
+          </p>
+          <p className="mt-4 text-sm">
+            Just browsing?{" "}
+            <a href="/demo" className="font-bold underline decoration-hot decoration-2 underline-offset-4">
+              See the finished demo
+            </a>
+          </p>
+        </aside>
+      </section>
     </div>
   );
 }
