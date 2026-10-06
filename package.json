@@ -8,7 +8,10 @@
     "build": "next build",
     "postbuild": "node scripts/hide-coord.js restore",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "tsx scripts/seed.ts",
+    "migrate": "tsx scripts/migrate.ts",
+    "import-people": "tsx scripts/import-people.ts"
   },
   "dependencies": {
     "next": "16.3.8",
@@ -24,6 +27,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
