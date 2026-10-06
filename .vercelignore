@@ -1,0 +1,8 @@
+# Agent C owns deployment config (AGENDA §5). The coord/ symlink and
+# .env.local must never upload: on Vercel they dangle and break the build
+# (ENOENT stat /vercel/path0/coord). Both are gitignored; this covers
+# `vercel deploy` from a worktree, which uploads ignored files otherwise.
+coord
+.env.local
+node_modules
+.next
