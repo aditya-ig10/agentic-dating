@@ -3,35 +3,11 @@
  *
  * Reads raw_scrapes (linkedin + instagram payloads) for a person, asks Gemini
  * for the structured Analysis JSON per AGENDA §4, validates it, and persists
- * via saveProfile (Agent A). Retries once on invalid JSON, else throws.
- *
- * NOTE: imports `../db` and `../types` — these land with Agent A's scaffold.
- * This file is written against the AGENDA §4 contracts and has not been
- * compiled yet (STATUS: waiting on scaffold).
+ * via saveProfile. Retries once on invalid JSON, else throws.
  */
 import { llmJson, LlmError } from '../llm';
-// Agent A provides: import { getRawScrapes, saveProfile } from '../db';
-// Agent A provides: import type { Analysis } from '../types';
-
-export interface EvidenceClaim {
-  text: string;
-  evidence: string;
-}
-
-export interface Analysis {
-  headline: string;
-  summary: string;
-  needs: EvidenceClaim[];
-  hobbies: EvidenceClaim[];
-  interests: EvidenceClaim[];
-  values: EvidenceClaim[];
-  personality: EvidenceClaim[];
-  communication_style: string;
-  partner_wants: string[];
-  dealbreakers: string[];
-  confidence: number;
-  data_gaps: string[];
-}
+import { getRawScrapes, getPerson, saveProfile, setPersonStatus } from '../db/people';
+import type { Analysis, EvidenceClaim } from '../types';
 
 const ANALYSIS_SCHEMA = `{
   headline: string,
@@ -120,21 +96,38 @@ function validate(a: Analysis): string[] {
 export const __test = { buildAnalysisPrompt, sanitize, validate };
 
 /**
- * Full pipeline step. Wired to Agent A's db functions once the scaffold lands:
- *   getRawScrapes(personId) -> { linkedin: string; instagram: string; name: string }
- *   saveProfile(personId, analysis, summary)
+ * Full pipeline step (AGENDA §4: reads raw_scrapes, writes profile).
+ * Default deps hit the real DB + Gemini; pass overrides for tests.
  */
 export async function analyzePerson(
   personId: string,
   deps: {
-    getRaw: (id: string) => Promise<{ name: string; linkedin: string; instagram: string }>;
-    save: (id: string, analysis: Analysis, summary: string) => Promise<void>;
+    getRaw?: (id: string) => Promise<{ name: string; linkedin: string; instagram: string }>;
+    save?: (id: string, analysis: Analysis) => Promise<void>;
     json?: <T>(prompt: string, schema: string) => Promise<T>;
-  },
+  } = {},
 ): Promise<Analysis> {
-  const { name, linkedin, instagram } = await deps.getRaw(personId);
+  const getRaw =
+    deps.getRaw ??
+    (async (id: string) => {
+      const person = await getPerson(id);
+      const rows = await getRawScrapes(id);
+      const bySource = new Map(rows.map((r) => [r.source, JSON.stringify(r.payload).slice(0, 12000)]));
+      return {
+        name: person?.name ?? '(unknown)',
+        linkedin: bySource.get('linkedin') ?? '',
+        instagram: bySource.get('instagram') ?? '',
+      };
+    });
+  const save =
+    deps.save ??
+    (async (id: string, analysis: Analysis) => {
+      await saveProfile(id, analysis);
+      await setPersonStatus(id, 'analyzed');
+    });
   const callJson = deps.json ?? (<T>(p: string, s: string) =>
     llmJson<T>(p, s, { purpose: 'analysis', maxOutputTokens: 4096, temperature: 0.6 }));
+  const { name, linkedin, instagram } = await getRaw(personId);
   const prompt = buildAnalysisPrompt(name, linkedin, instagram);
   let raw: Analysis | null = null;
   let problems: string[] = [];
@@ -155,7 +148,7 @@ export async function analyzePerson(
     const clean = sanitize(raw);
     problems = validate(clean);
     if (problems.length === 0) {
-      await deps.save(personId, clean, clean.summary);
+      await save(personId, clean);
       return clean;
     }
   }

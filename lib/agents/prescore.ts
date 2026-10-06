@@ -7,24 +7,11 @@
  * candidates are excluded from the batch (resumable, never re-scored).
  * Then top-K candidate selection per person with symmetric dedupe:
  * date(A,B) runs once even if both rank each other.
- *
- * NOTE: DB function signatures per AGENDA §4. Deps-injected so this compiles
- * and unit-tests before Agent A's scaffold lands.
  */
 import { llmJson } from '../llm';
-import type { Analysis } from './analyze';
-
-export interface ProfileLite {
-  personId: string;
-  analysis: Analysis;
-}
-
-export interface PairScore {
-  aId: string;
-  bId: string;
-  score: number;
-  reason: string;
-}
+import { db } from '../db/client';
+import { getProfile } from '../db/people';
+import type { Analysis, PairScore } from '../types';
 
 export interface BatchScoreItem {
   id: string;
@@ -65,19 +52,43 @@ export const __test = { buildBatchPrescorePrompt, pairKey };
 export interface PrescoreDeps {
   /** All person ids in the cohort. */
   cohortIds: string[];
-  /** Load a person's saved analysis. */
-  getAnalysis: (id: string) => Promise<Analysis | null>;
-  /** Load a cached score; null if unscored. Keyed unordered. */
-  getCached: (aId: string, bId: string) => Promise<PairScore | null>;
-  /** Persist fresh scores. */
-  saveScores: (rows: PairScore[]) => Promise<void>;
+  /** Load a person's saved analysis. Defaults to profiles table. */
+  getAnalysis?: (id: string) => Promise<Analysis | null>;
+  /** Load a cached score; null if unscored. Keyed unordered. Defaults to pair_scores. */
+  getCached?: (aId: string, bId: string) => Promise<PairScore | null>;
+  /** Persist fresh scores. Defaults to pair_scores upsert. */
+  saveScores?: (rows: PairScore[]) => Promise<void>;
   /** Optional LLM override for tests (defaults to llmJson). */
   json?: <T>(prompt: string, schema: string) => Promise<T>;
 }
 
 /** Score every pair in the cohort; skips pairs already cached (resumable). */
-export async function scorePairs(deps: PrescoreDeps): Promise<{ scored: number; skipped: number; calls: number }> {
-  const { cohortIds, getAnalysis, getCached, saveScores } = deps;
+export async function scorePairs(
+  cohortIdsOrDeps: string[] | PrescoreDeps,
+): Promise<{ scored: number; skipped: number; calls: number }> {
+  const deps: PrescoreDeps = Array.isArray(cohortIdsOrDeps) ? { cohortIds: cohortIdsOrDeps } : cohortIdsOrDeps;
+  const { cohortIds } = deps;
+  const getAnalysis =
+    deps.getAnalysis ??
+    (async (id: string) => (await getProfile(id))?.analysis ?? null);
+  const getCached =
+    deps.getCached ??
+    (async (aId: string, bId: string) => {
+      const rows = await db()`
+        SELECT * FROM pair_scores
+        WHERE (a_id = ${aId} AND b_id = ${bId}) OR (a_id = ${bId} AND b_id = ${aId}) LIMIT 1`;
+      return ((rows as unknown[])[0] as PairScore | undefined) ?? null;
+    });
+  const saveScores =
+    deps.saveScores ??
+    (async (rows: PairScore[]) => {
+      for (const r of rows) {
+        await db()`
+          INSERT INTO pair_scores (a_id, b_id, score, reason)
+          VALUES (${r.a_id}, ${r.b_id}, ${r.score}, ${r.reason})
+          ON CONFLICT (a_id, b_id) DO UPDATE SET score = ${r.score}, reason = ${r.reason}`;
+      }
+    });
   const callJson = deps.json ?? (<T>(p: string, s: string) =>
     llmJson<T>(p, s, { purpose: 'prescore', maxOutputTokens: 4096, temperature: 0.5 }));
   const analyses = new Map<string, Analysis>();
@@ -118,7 +129,7 @@ export async function scorePairs(deps: PrescoreDeps): Promise<{ scored: number; 
       const s = byId.get(t.id);
       const score =
         s && typeof s.score === 'number' ? Math.min(100, Math.max(0, Math.round(s.score))) : 50;
-      rows.push({ aId: me, bId: t.id, score, reason: String(s?.reason ?? 'no reason given').slice(0, 300) });
+      rows.push({ a_id: me, b_id: t.id, score, reason: String(s?.reason ?? 'no reason given').slice(0, 300) });
     }
     await saveScores(rows);
     scored += rows.length;
@@ -138,19 +149,19 @@ export function selectCandidates(
   const byPerson = new Map<string, PairScore[]>();
   for (const id of personIds) byPerson.set(id, []);
   for (const s of scores) {
-    byPerson.get(s.aId)?.push(s);
+    byPerson.get(s.a_id)?.push(s);
     // Mirror so lookup from B's side works too.
-    byPerson.get(s.bId)?.push({ aId: s.bId, bId: s.aId, score: s.score, reason: s.reason });
+    byPerson.get(s.b_id)?.push({ a_id: s.b_id, b_id: s.a_id, score: s.score, reason: s.reason });
   }
   const picked = new Set<string>();
   const out: Array<{ aId: string; bId: string }> = [];
   for (const id of personIds) {
     const ranked = (byPerson.get(id) ?? []).sort((x, y) => y.score - x.score).slice(0, topK);
     for (const r of ranked) {
-      const key = pairKey(id, r.bId);
+      const key = pairKey(id, r.b_id);
       if (picked.has(key)) continue;
       picked.add(key);
-      const [aId, bId] = [id, r.bId].sort();
+      const [aId, bId] = [id, r.b_id].sort();
       out.push({ aId, bId });
     }
   }

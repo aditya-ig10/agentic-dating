@@ -7,28 +7,33 @@
  * over generic rom-com patter.
  *
  * Deps-injected (profiles, settings, persistence) per AGENDA §4.
+ * Default deps hit the real DB + Gemini; pass overrides for tests.
+ * TranscriptTurn uses AGENDA "a"|"b" speaker convention.
  */
-import type { Analysis } from './analyze';
-
-export type Chemistry = 'none' | 'low' | 'warm' | 'strong';
+import type { Analysis, Chemistry, TranscriptTurn, Verdict } from '../types';
+import { llmChat, llmJson } from '../llm';
+import { db } from '../db/client';
+import { getPerson, getProfile } from '../db/people';
 
 export interface DateMessage {
   from: string; // personId
   text: string;
 }
 
-export interface Verdict {
+export interface DateResult {
+  transcript: DateMessage[];
+  verdicts: [LocalVerdict, LocalVerdict];
+  dateId: string;
+}
+
+/** Verdict before DB persistence (no date_id yet). */
+export interface LocalVerdict {
   fromPersonId: string;
   score: number; // 0-100
   chemistry: Chemistry;
   red_flags: string[];
   would_meet_again: boolean;
   note: string;
-}
-
-export interface DateResult {
-  transcript: DateMessage[];
-  verdicts: [Verdict, Verdict];
 }
 
 const VERDICT_SCHEMA = `{ score: 0-100, chemistry: "none"|"low"|"warm"|"strong", red_flags: [string], would_meet_again: bool, one_line_note: string }`;
@@ -108,21 +113,59 @@ function cleanTurn(text: string, name: string): string {
 export const __test = { personaPrompt, verdictPrompt, cleanTurn, settingFor, DATE_SETTINGS };
 
 export interface DateTurnDeps {
-  chat: (system: string, history: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>;
+  chat?: (system: string, history: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>;
 }
 
 export interface RunDateDeps extends DateTurnDeps {
-  getAnalysis: (id: string) => Promise<Analysis>;
-  getName: (id: string) => Promise<string>;
+  getAnalysis?: (id: string) => Promise<Analysis>;
+  getName?: (id: string) => Promise<string>;
+  /** Persist the finished date + verdicts. Defaults to dates/verdicts tables. */
+  saveDate?: (aId: string, bId: string, transcript: TranscriptTurn[], verdicts: LocalVerdict[]) => Promise<string>;
 }
 
 export interface DateVerdictDeps {
-  json: <T>(prompt: string, schema: string) => Promise<T>;
+  json?: <T>(prompt: string, schema: string) => Promise<T>;
 }
 
-export async function runDate(aId: string, bId: string, deps: RunDateDeps & DateVerdictDeps): Promise<DateResult> {
-  const [aAnalysis, bAnalysis] = await Promise.all([deps.getAnalysis(aId), deps.getAnalysis(bId)]);
-  const [aName, bName] = await Promise.all([deps.getName(aId), deps.getName(bId)]);
+export async function runDate(
+  aId: string,
+  bId: string,
+  deps: RunDateDeps & DateVerdictDeps = {},
+): Promise<DateResult> {
+  const getAnalysis = deps.getAnalysis ?? (async (id: string) => {
+    const p = await getProfile(id);
+    if (!p) throw new Error(`no profile for ${id} — run analyzePerson first`);
+    return p.analysis;
+  });
+  const getName = deps.getName ?? (async (id: string) => (await getPerson(id))?.name ?? id);
+  const chat = deps.chat ?? (async (system: string, history: Array<{ role: 'user' | 'assistant'; content: string }>) =>
+    llmChat([{ role: 'system', content: system }, ...history], {
+      purpose: 'date-turn',
+      maxOutputTokens: 200,
+      temperature: 0.95,
+    }));
+  const callJson = deps.json ?? (<T>(p: string, s: string) =>
+    llmJson<T>(p, s, { purpose: 'verdict', maxOutputTokens: 300, temperature: 0.5 }));
+  const saveDate = deps.saveDate ?? (async (xId: string, yId: string, transcript: TranscriptTurn[], vs: LocalVerdict[]) => {
+    const transcriptJson = JSON.parse(JSON.stringify(transcript));
+    const rows = await db()`
+      INSERT INTO dates (a_id, b_id, status, transcript)
+      VALUES (${xId}, ${yId}, 'done', ${db().json(transcriptJson)})
+      RETURNING id`;
+    const dateId = (rows as unknown as { id: string }[])[0].id;
+    for (const v of vs) {
+      const flagsJson = JSON.parse(JSON.stringify(v.red_flags));
+      await db()`
+        INSERT INTO verdicts (date_id, from_person_id, score, chemistry, red_flags, would_meet_again, note)
+        VALUES (${dateId}, ${v.fromPersonId}, ${v.score}, ${v.chemistry}, ${db().json(flagsJson)}, ${v.would_meet_again}, ${v.note})
+        ON CONFLICT (date_id, from_person_id) DO UPDATE SET
+          score = ${v.score}, chemistry = ${v.chemistry}, red_flags = ${db().json(flagsJson)},
+          would_meet_again = ${v.would_meet_again}, note = ${v.note}`;
+    }
+    return dateId;
+  });
+  const [aAnalysis, bAnalysis] = await Promise.all([getAnalysis(aId), getAnalysis(bId)]);
+  const [aName, bName] = await Promise.all([getName(aId), getName(bId)]);
   const names = new Map([
     [aId, aName],
     [bId, bName],
@@ -151,7 +194,7 @@ export async function runDate(aId: string, bId: string, deps: RunDateDeps & Date
       t === 0
         ? [{ role: 'user' as const, content: `The date begins at ${setting}. Say your opening message.` }]
         : renderFor(selfId);
-    const raw = await deps.chat(system, history);
+    const raw = await chat(system, history);
     transcript.push({ from: selfId, text: cleanTurn(raw, names.get(selfId) ?? '') });
     // Extension rule: go to 8 turns if both asked a question in turns 5-6.
     if (t === TOTAL_TURNS - 1) {
@@ -165,7 +208,7 @@ export async function runDate(aId: string, bId: string, deps: RunDateDeps & Date
   const verdicts = (await Promise.all(
     [aId, bId].map(async (id) => {
       const persona = id === aId ? personaA : personaB;
-      const v = await deps.json<{
+      const v = await callJson<{
         score: number;
         chemistry: Chemistry;
         red_flags: string[];
@@ -180,9 +223,17 @@ export async function runDate(aId: string, bId: string, deps: RunDateDeps & Date
         red_flags: Array.isArray(v.red_flags) ? v.red_flags.map(String).slice(0, 5) : [],
         would_meet_again: v.would_meet_again === true,
         note: String(v.one_line_note ?? '').slice(0, 140),
-      } satisfies Verdict;
+      } satisfies LocalVerdict;
     }),
-  )) as [Verdict, Verdict];
+  )) as [LocalVerdict, LocalVerdict];
 
-  return { transcript, verdicts };
+  // Convert to AGENDA TranscriptTurn ("a"|"b" speaker) and persist.
+  const stored: TranscriptTurn[] = transcript.map((m) => ({
+    speaker: m.from === aId ? ('a' as const) : ('b' as const),
+    speaker_name: names.get(m.from) ?? m.from,
+    text: m.text,
+  }));
+  const dateId = await saveDate(aId, bId, stored, verdicts);
+
+  return { transcript, verdicts, dateId };
 }
