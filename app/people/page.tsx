@@ -1,16 +1,17 @@
-// /people — cohort grid. Mock-backed until A's contracts land,
-// then swaps to GET /api/people (see lib/api.ts).
+// /people — the contender wall.
 import PersonGrid from "@/components/PersonGrid";
 import { mockPeople } from "@/components/mock";
 
 export default function PeoplePage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold">The cohort</h1>
-      <p className="mt-1 text-sm text-stone-600">
-        {mockPeople.length} people · agents dating on their behalf
+      <h1 className="font-display text-4xl uppercase leading-none sm:text-6xl">
+        The <span className="text-hot">lineup</span>
+      </h1>
+      <p className="font-love mt-2 text-xl text-lav">
+        {mockPeople.length} agents, dressed up and ready to mingle.
       </p>
-      <div className="mt-4">
+      <div className="mt-6">
         <PersonGrid people={mockPeople} />
       </div>
     </div>

@@ -1,15 +1,14 @@
-// Shared loading / error / empty states (graders try odd input —
-// every page renders one of these instead of crashing).
-export function Loading({ label = "Loading…" }: { label?: string }) {
+// Shared loading / error / empty states, lab-styled.
+export function Loading({ label = "Setting the room…" }: { label?: string }) {
   return (
     <div className="mx-auto max-w-3xl py-12" aria-live="polite" aria-busy="true">
-      <div className="animate-pulse space-y-3">
-        <div className="h-6 w-1/3 rounded bg-stone-200" />
-        <div className="h-4 w-full rounded bg-stone-200" />
-        <div className="h-4 w-5/6 rounded bg-stone-200" />
-        <div className="h-4 w-2/3 rounded bg-stone-200" />
+      <div className="animate-pulse space-y-3" aria-hidden>
+        <div className="h-8 w-1/3 -rotate-1 bg-hot/60" />
+        <div className="h-4 w-full bg-bone/20" />
+        <div className="h-4 w-5/6 rotate-[0.5deg] bg-bone/20" />
+        <div className="h-4 w-2/3 -rotate-[0.5deg] bg-bone/20" />
       </div>
-      <p className="mt-4 text-sm text-stone-500">{label}</p>
+      <p className="font-display mt-4 text-sm uppercase tracking-wider text-gold">{label}</p>
     </div>
   );
 }
@@ -23,13 +22,13 @@ export function ErrorState({
 }) {
   return (
     <div className="mx-auto max-w-3xl py-12" role="alert">
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <h2 className="font-semibold text-red-800">Something went wrong</h2>
-        <p className="mt-1 text-sm text-red-700">{message}</p>
+      <div className="pop border-2 border-ink bg-tang p-6 text-bone">
+        <h2 className="font-display text-xl uppercase">The night hit a snag</h2>
+        <p className="mt-1 font-medium">{message}</p>
         {retry && (
           <button
             onClick={retry}
-            className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800"
+            className="font-display mt-4 border-2 border-bone bg-ink px-4 py-2 text-sm uppercase text-bone hover:bg-ink2"
           >
             Try again
           </button>
@@ -50,8 +49,8 @@ export function EmptyState({
 }) {
   return (
     <div className="mx-auto max-w-3xl py-12 text-center">
-      <h2 className="font-semibold text-stone-900">{title}</h2>
-      <p className="mt-1 text-sm text-stone-600">{body}</p>
+      <h2 className="font-display text-2xl uppercase">{title}</h2>
+      <p className="mt-1 text-bone/70">{body}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

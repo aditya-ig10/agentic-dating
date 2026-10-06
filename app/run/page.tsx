@@ -1,9 +1,6 @@
 "use client";
 
-// /run — cohort control (unlinked from nav prominence).
-// Triggers one chunk of the cohort run, then polls job progress.
-// Graceful while backend routes are still landing: shows the error
-// message from the API layer instead of crashing.
+// /run — the booth behind the curtain. One chunk per press, graceful errors.
 import { useState } from "react";
 import { api } from "@/lib/api";
 
@@ -13,7 +10,7 @@ export default function RunPage() {
 
   async function trigger() {
     setBusy(true);
-    setStatus("Triggering one cohort chunk…");
+    setStatus("Warming up the room…");
     try {
       const res = (await api.runCohort()) as {
         job_id?: string;
@@ -21,14 +18,14 @@ export default function RunPage() {
       };
       setStatus(
         res.job_id
-          ? `Chunk started (job ${res.job_id}). Re-press to continue the next chunk.`
-          : `Cohort endpoint replied: ${res.status ?? "ok"}. Re-press to continue.`,
+          ? `Chunk is running (job ${res.job_id}). Press again for the next chunk.`
+          : `The booth replied: ${res.status ?? "ok"}. Press again to continue.`,
       );
     } catch (err) {
       setStatus(
         err instanceof Error
-          ? `Backend not ready yet: ${err.message}`
-          : "Backend not ready yet — the cohort routes are still landing.",
+          ? `Booth's closed for now: ${err.message}`
+          : "Booth's closed for now — the cohort routes are still landing.",
       );
     } finally {
       setBusy(false);
@@ -37,23 +34,24 @@ export default function RunPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-bold">Cohort run</h1>
-      <p className="mt-1 text-sm text-stone-600">
-        Each press runs one small chunk (scoring, a few dates, or ranking
-        progress) so serverless timeouts never kill the batch. Keep pressing
-        until the cohort is fully dated.
+      <h1 className="font-display text-4xl uppercase sm:text-5xl">
+        The control <span className="text-aqua">booth</span>
+      </h1>
+      <p className="font-love mt-2 text-xl text-lav">
+        One chunk per press — scoring, a few dates, ranking progress. Patience
+        is part of the show.
       </p>
       <button
         onClick={trigger}
         disabled={busy}
-        className="mt-4 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
+        className="font-display pop-gold mt-6 w-full -rotate-1 border-2 border-ink bg-hot px-4 py-3 text-lg uppercase text-bone hover:rotate-0 disabled:opacity-50"
       >
         {busy ? "Running…" : "Run next chunk"}
       </button>
       {status && (
         <p
           role="status"
-          className="mt-4 rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-700"
+          className="pop-sm mt-4 border-2 border-ink bg-bone px-4 py-3 font-medium text-ink"
         >
           {status}
         </p>

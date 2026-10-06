@@ -1,58 +1,50 @@
-// VerdictCard — one agent's structured verdict after a date.
-// AGENDA §4 verdict: score 0-100, chemistry, red_flags[], would_meet_again, note.
+// VerdictCard — roadside scoreboard. Giant score numeral, rotated chemistry
+// stamp, meet-again seal, red-flag tape, pull-quote note.
 import type { Verdict } from "./mock";
 
-const chemistryStyles: Record<Verdict["chemistry"], string> = {
-  none: "bg-stone-100 text-stone-600",
-  low: "bg-amber-100 text-amber-800",
-  warm: "bg-orange-100 text-orange-800",
-  strong: "bg-rose-100 text-rose-800",
+const chemistry: Record<Verdict["chemistry"], { label: string; cls: string }> = {
+  none: { label: "No spark", cls: "bg-bone text-ink" },
+  low: { label: "Faint spark", cls: "bg-gold text-ink" },
+  warm: { label: "Warm", cls: "bg-tang text-bone" },
+  strong: { label: "Electric", cls: "bg-hot text-bone" },
 };
 
 export default function VerdictCard({ verdict }: { verdict: Verdict }) {
+  const c = chemistry[verdict.chemistry];
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <p className="font-medium text-stone-900">{verdict.from_name}</p>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${chemistryStyles[verdict.chemistry]}`}
-        >
-          {verdict.chemistry} chemistry
-        </span>
-      </div>
-      <div className="mt-3 flex items-center gap-3">
-        <p className="text-3xl font-bold text-stone-900">{verdict.score}</p>
-        <div>
-          <p className="text-xs text-stone-500">compatibility score / 100</p>
+    <div className="pop-sm relative border-2 border-ink bg-bone p-5 text-ink">
+      <span
+        aria-hidden
+        className={`absolute -top-3 right-4 rotate-3 border-2 border-ink px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${c.cls}`}
+      >
+        {c.label}
+      </span>
+      <p className="font-display text-lg uppercase">{verdict.from_name}</p>
+      <div className="mt-1 flex items-end gap-3">
+        <p className="font-display text-6xl leading-none">{verdict.score}</p>
+        <div className="pb-1">
+          <p className="text-xs text-ink/60">out of 100</p>
           <p
-            className={`text-sm font-medium ${verdict.would_meet_again ? "text-emerald-700" : "text-stone-500"}`}
+            className={`inline-block -rotate-1 border-2 border-ink px-2 py-0.5 text-sm font-bold ${
+              verdict.would_meet_again ? "bg-gold" : "bg-bone"
+            }`}
           >
-            {verdict.would_meet_again
-              ? "✓ Would meet again"
-              : "✗ Would not meet again"}
+            {verdict.would_meet_again ? "✓ Again" : "✕ Pass"}
           </p>
         </div>
       </div>
       {verdict.red_flags.length > 0 && (
-        <div className="mt-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-            Red flags
-          </p>
-          <ul className="mt-1 flex flex-wrap gap-1.5">
-            {verdict.red_flags.map((f) => (
-              <li
-                key={f}
-                className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs text-red-700"
-              >
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul className="mt-3 space-y-1.5">
+          {verdict.red_flags.map((f) => (
+            <li key={f} className="bg-tang/20 px-2 py-1 text-sm font-medium">
+              ⚑ {f}
+            </li>
+          ))}
+        </ul>
       )}
-      <blockquote className="mt-3 border-l-2 border-rose-200 pl-3 text-sm italic text-stone-600">
+      <p className="font-love mt-3 border-t-2 border-dashed border-ink/25 pt-2 text-[15px] text-ink/80">
         “{verdict.note}”
-      </blockquote>
+      </p>
     </div>
   );
 }

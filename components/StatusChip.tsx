@@ -1,22 +1,22 @@
-// StatusChip — small status pill for person / date states.
+// StatusChip — neon stamp variants. Shape rotates slightly like a hand stamp.
 import type { MockPerson, MockDate } from "./mock";
 
 type Status = MockPerson["status"] | MockDate["status"];
 
 const styles: Record<Status, string> = {
-  pending: "bg-stone-100 text-stone-600",
-  queued: "bg-stone-100 text-stone-600",
-  scraped: "bg-sky-100 text-sky-800",
-  running: "bg-sky-100 text-sky-800",
-  analyzed: "bg-emerald-100 text-emerald-800",
-  done: "bg-emerald-100 text-emerald-800",
-  failed: "bg-red-100 text-red-800",
+  pending: "bg-bone text-ink border-ink",
+  queued: "bg-bone text-ink border-ink",
+  scraped: "bg-aqua text-ink border-ink",
+  running: "bg-aqua text-ink border-ink",
+  analyzed: "bg-gold text-ink border-ink",
+  done: "bg-gold text-ink border-ink",
+  failed: "bg-tang text-ink border-ink",
 };
 
 export default function StatusChip({ status }: { status: Status }) {
   return (
     <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] ?? "bg-stone-100 text-stone-600"}`}
+      className={`inline-block -rotate-2 border-2 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${styles[status] ?? "bg-bone text-ink border-ink"}`}
     >
       {status}
     </span>

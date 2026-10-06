@@ -1,10 +1,12 @@
-// PersonGrid — cohort grid with client-side search filter.
-// Pure presentational: takes people, filters by name locally.
+// PersonGrid — trading-card wall. Search stays, cards become collectible
+// dossiers: giant initial medallion, headline, neon stamp, bold link.
 "use client";
 
 import { useState } from "react";
 import StatusChip from "./StatusChip";
 import type { MockPerson } from "./mock";
+
+const medallions = ["bg-hot text-bone", "bg-aqua text-ink", "bg-gold text-ink", "bg-tang text-bone"];
 
 export default function PersonGrid({ people }: { people: MockPerson[] }) {
   const [query, setQuery] = useState("");
@@ -18,35 +20,41 @@ export default function PersonGrid({ people }: { people: MockPerson[] }) {
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search the cohort…"
+        placeholder="Find your contender…"
         aria-label="Search people"
-        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none"
+        className="w-full border-2 border-bone/40 bg-ink2 px-4 py-3 text-bone placeholder:text-bone/40 focus:border-gold focus:outline-none"
       />
       {filtered.length === 0 ? (
-        <p className="mt-6 text-sm text-stone-500">
+        <p className="mt-6 border-2 border-dashed border-bone/40 p-6 text-bone/70">
           {people.length === 0
-            ? "Nobody here yet — add the first person on the home page."
-            : `No matches for “${query}”.`}
+            ? "The room is empty — add the first contender on the home page."
+            : `Nobody matches “${query}”. Try another name.`}
         </p>
       ) : (
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
+        <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((p, i) => (
             <li
               key={p.id}
-              className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
+              className={`pop-sm border-2 border-ink bg-bone p-5 text-ink ${
+                i % 3 === 0 ? "-rotate-1" : i % 3 === 1 ? "rotate-1" : ""
+              }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-medium text-stone-900">{p.name}</p>
+              <div className="flex items-start justify-between gap-2">
+                <span
+                  aria-hidden
+                  className={`font-display flex h-12 w-12 items-center justify-center border-2 border-ink text-xl ${medallions[i % medallions.length]}`}
+                >
+                  {p.name.charAt(0)}
+                </span>
                 <StatusChip status={p.status} />
               </div>
-              <p className="mt-1 line-clamp-2 text-sm text-stone-600">
-                {p.analysis.headline}
-              </p>
+              <p className="font-display mt-3 text-xl uppercase leading-tight">{p.name}</p>
+              <p className="font-love mt-1 text-ink/70">{p.analysis.headline}</p>
               <a
                 href={`/people/${p.id}`}
-                className="mt-3 inline-block text-sm font-medium text-rose-700 hover:underline"
+                className="mt-3 inline-block font-bold underline decoration-hot decoration-[3px] underline-offset-4"
               >
-                View profile →
+                Open dossier
               </a>
             </li>
           ))}
