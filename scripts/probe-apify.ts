@@ -30,7 +30,7 @@ async function main() {
   if (!token) throw new Error("APIFY_TOKEN not set");
   const client = new ApifyClient({ token });
   const me = await client.user().get();
-  console.log(`apify user: ${me?.username}, plan: ${(me as Record<string, unknown> | undefined)?.plan as string ?? "?"}`);
+  console.log(`apify user: ${me?.username}, plan: ${(me as unknown as Record<string, unknown> | undefined)?.plan as string ?? "?"}`);
 
   // Candidate Instagram actors (free-tier friendly, try in order)
   for (const actor of ["apify/instagram-profile-scraper", "apify/instagram-scraper"]) {
