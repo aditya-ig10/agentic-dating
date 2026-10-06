@@ -4,4 +4,11 @@ coord
 !.env.example
 node_modules
 .next
+/out/
+/build
 data/raw
+coverage
+.DS_Store
+.vercel
+*.tsbuildinfo
+next-env.d.ts
