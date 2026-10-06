@@ -1,6 +1,7 @@
-// VerdictCard — roadside scoreboard. Giant score numeral, rotated chemistry
-// stamp, meet-again seal, red-flag tape, pull-quote note.
-import type { Verdict } from "./mock";
+// VerdictCard — roadside scoreboard. Verdicts carry from_person_id only,
+// so the speaker's name arrives as a prop from the page (which knows
+// both people on the date).
+import type { Verdict } from "@/lib/types";
 
 const chemistry: Record<Verdict["chemistry"], { label: string; cls: string }> = {
   none: { label: "No spark", cls: "bg-bone text-ink" },
@@ -9,7 +10,13 @@ const chemistry: Record<Verdict["chemistry"], { label: string; cls: string }> = 
   strong: { label: "Electric", cls: "bg-hot text-bone" },
 };
 
-export default function VerdictCard({ verdict }: { verdict: Verdict }) {
+export default function VerdictCard({
+  verdict,
+  fromName,
+}: {
+  verdict: Verdict;
+  fromName: string;
+}) {
   const c = chemistry[verdict.chemistry];
   return (
     <div className="pop-sm relative border-2 border-ink bg-bone p-5 text-ink">
@@ -19,7 +26,7 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
       >
         {c.label}
       </span>
-      <p className="font-display text-lg uppercase">{verdict.from_name}</p>
+      <p className="font-display text-lg uppercase">{fromName}</p>
       <div className="mt-1 flex items-end gap-3">
         <p className="font-display text-6xl leading-none">{verdict.score}</p>
         <div className="pb-1">

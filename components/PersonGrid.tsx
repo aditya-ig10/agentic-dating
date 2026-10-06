@@ -1,14 +1,13 @@
-// PersonGrid — trading-card wall. Search stays, cards become collectible
-// dossiers: giant initial medallion, headline, neon stamp, bold link.
+// PersonGrid — trading-card wall over real Person rows.
 "use client";
 
 import { useState } from "react";
 import StatusChip from "./StatusChip";
-import type { MockPerson } from "./mock";
+import type { Person } from "@/lib/types";
 
 const medallions = ["bg-hot text-bone", "bg-aqua text-ink", "bg-gold text-ink", "bg-tang text-bone"];
 
-export default function PersonGrid({ people }: { people: MockPerson[] }) {
+export default function PersonGrid({ people }: { people: Person[] }) {
   const [query, setQuery] = useState("");
   const filtered = people.filter((p) =>
     p.name.toLowerCase().includes(query.trim().toLowerCase()),
@@ -49,7 +48,9 @@ export default function PersonGrid({ people }: { people: MockPerson[] }) {
                 <StatusChip status={p.status} />
               </div>
               <p className="font-display mt-3 text-xl uppercase leading-tight">{p.name}</p>
-              <p className="font-love mt-1 text-ink/70">{p.analysis.headline}</p>
+              {p.status !== "analyzed" && p.status !== "failed" ? (
+                <p className="font-love mt-1 text-ink/70">Dossier still in the lab…</p>
+              ) : null}
               <a
                 href={`/people/${p.id}`}
                 className="mt-3 inline-block font-bold underline decoration-hot decoration-[3px] underline-offset-4"

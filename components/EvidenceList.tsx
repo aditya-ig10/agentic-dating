@@ -1,6 +1,6 @@
 // EvidenceList — pinned dossier slips. Each claim is a rotated slip with
 // tape, alternating tilt; the evidence reads like a field note.
-import type { EvidenceClaim } from "./mock";
+import type { EvidenceClaim } from "@/lib/types";
 
 export default function EvidenceList({
   title,

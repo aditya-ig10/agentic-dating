@@ -1,7 +1,7 @@
-// StatusChip — neon stamp variants. Shape rotates slightly like a hand stamp.
-import type { MockPerson, MockDate } from "./mock";
+// StatusChip — neon stamp. Status literals match lib/types.ts exactly.
+import type { PersonStatus, DateStatus } from "@/lib/types";
 
-type Status = MockPerson["status"] | MockDate["status"];
+type Status = PersonStatus | DateStatus;
 
 const styles: Record<Status, string> = {
   pending: "bg-bone text-ink border-ink",

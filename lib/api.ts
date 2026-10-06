@@ -1,6 +1,20 @@
 // lib/api.ts — typed fetch helper for Agent C pages (Agent C owns this file).
 // All calls use relative /api/* URLs so the same build works on Vercel
 // and localhost with zero base-URL config.
+// Response shapes mirror Agent A's routes exactly:
+//   GET /api/people -> { people }
+//   POST /api/people -> { person } (201)
+//   GET /api/people/:id -> { person, profile, ranking_preview }
+//   GET /api/people/:id/dates -> { dates, verdicts }
+//   GET /api/dates/:id -> { date, verdicts }
+//   GET /api/people/:id/ranking -> { ranking }
+import type {
+  Person,
+  Profile,
+  RankingEntry,
+  DateWithVerdicts,
+  Verdict,
+} from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -20,33 +34,50 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export interface ApiPerson {
-  id: string;
-  name: string;
-  linkedin_url: string;
-  instagram_url: string;
-  consent: boolean;
-  status: "pending" | "scraped" | "analyzed" | "failed";
-  error?: string | null;
-  created_at: string;
+export type { Person, Profile, RankingEntry, DateWithVerdicts, Verdict };
+
+export interface PersonWithProfile {
+  person: Person;
+  profile: Profile | null;
+  ranking_preview: RankingEntry[];
+}
+
+export interface PersonDates {
+  dates: DateWithVerdicts[];
+  verdicts: Verdict[];
+}
+
+export interface DateDetail {
+  date: DateWithVerdicts;
+  verdicts: Verdict[];
+}
+
+export interface PersonRanking {
+  ranking: (RankingEntry & { candidate_name: string })[];
 }
 
 export const api = {
-  listPeople: () => req<ApiPerson[]>("/api/people"),
-  getPerson: (id: string) => req<unknown>(`/api/people/${id}`),
+  listPeople: () =>
+    req<{ people: Person[] }>("/api/people").then((r) => r.people),
+  getPerson: (id: string) =>
+    req<PersonWithProfile>(`/api/people/${id}`),
   createPerson: (body: {
     linkedin_url: string;
     instagram_url: string;
     name?: string;
     consent: boolean;
-  }) => req<ApiPerson>("/api/people", { method: "POST", body: JSON.stringify(body) }),
-  ingestPerson: (id: string) =>
-    req<ApiPerson>(`/api/people/${id}/ingest`, { method: "POST" }),
+  }) =>
+    req<{ person: Person }>("/api/people", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }).then((r) => r.person),
   getDates: (personId: string) =>
-    req<unknown[]>(`/api/people/${personId}/dates`),
-  getDate: (dateId: string) => req<unknown>(`/api/dates/${dateId}`),
+    req<PersonDates>(`/api/people/${personId}/dates`),
+  getDate: (dateId: string) => req<DateDetail>(`/api/dates/${dateId}`),
   getRanking: (personId: string) =>
-    req<unknown[]>(`/api/people/${personId}/ranking`),
+    req<PersonRanking>(`/api/people/${personId}/ranking`).then(
+      (r) => r.ranking,
+    ),
   matchPerson: (id: string) => req<unknown>(`/api/match/${id}`, { method: "POST" }),
   runCohort: () => req<unknown>("/api/cohort/run", { method: "POST" }),
   getJob: (jobId: string) => req<unknown>(`/api/jobs/${jobId}`),

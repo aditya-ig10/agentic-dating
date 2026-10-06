@@ -3,7 +3,7 @@
 // Home — admit-two ticket hero. URL validation, consent gate, POST /api/people.
 import { useState } from "react";
 import { api, isHttpUrl } from "@/lib/api";
-import { mockPeople } from "@/components/mock";
+import { fixturePeople } from "@/fixtures/people";
 
 function Ticker() {
   const bits = [
@@ -99,7 +99,7 @@ export default function HomePage() {
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           {[
-            [`${mockPeople.length}`, "agents mingling"],
+            [`${fixturePeople.length}`, "agents mingling"],
             ["6–8", "turns per date"],
             ["300", "possible pairs"],
           ].map(([big, small]) => (

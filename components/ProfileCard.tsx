@@ -1,8 +1,8 @@
-// ProfileCard — contestant dossier. Giant name, serif headline, confidence
-// dial, taped evidence slips, dealbreaker stamps, honest data-gap flag.
+// ProfileCard — contestant dossier. Person + Analysis arrive separately
+// (GET /api/people/:id returns { person, profile }), composed here.
 import EvidenceList from "./EvidenceList";
 import StatusChip from "./StatusChip";
-import type { MockPerson } from "./mock";
+import type { Person, Analysis } from "@/lib/types";
 
 function ConfidenceDial({ value }: { value: number }) {
   const pct = Math.round(value * 100);
@@ -36,8 +36,14 @@ function ConfidenceDial({ value }: { value: number }) {
   );
 }
 
-export default function ProfileCard({ person }: { person: MockPerson }) {
-  const a = person.analysis;
+export default function ProfileCard({
+  person,
+  analysis,
+}: {
+  person: Person;
+  analysis: Analysis;
+}) {
+  const a = analysis;
   return (
     <article className="mx-auto max-w-4xl">
       <header className="border-2 border-bone/30 bg-ink2 p-6 sm:p-8">
