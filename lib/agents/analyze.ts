@@ -32,6 +32,7 @@ function buildAnalysisPrompt(name: string, linkedin: string, instagram: string):
 Rules:
 - Every claim in needs/hobbies/interests/values/personality MUST have a short evidence quote (<=140 chars) copied or closely paraphrased from the source data.
 - Evidence never invents posts, jobs, or trips. If the data is thin, say so in data_gaps and LOWER confidence. Never fill gaps with guesses.
+- THIN DATA: if a category has no direct evidence, you may add ONE honest entry describing what the data itself shows (e.g. "keeps a minimal public profile" with evidence "0 posts, 1-letter bio"). This keeps the persona usable without inventing facts. Never present these as confirmed hobbies or traits — phrase them as observed online behavior.
 - FORBIDDEN: do not infer or mention religion, sexual orientation, health, politics, ethnicity, or caste — of this person or anyone else. If such a topic appears in the source, ignore it for the profile.
 - partner_wants: 3-6 concrete traits (not "nice person"). dealbreakers: 2-4.
 - communication_style: 1-2 sentences on how they come across in writing.
